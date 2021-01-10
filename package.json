@@ -1,0 +1,27 @@
+{
+  "name": "matic-atoken-predicate",
+  "version": "1.0.0",
+  "description": "Matic aToken Predicate",
+  "main": "none",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aavegotchi/matic-atoken-predicate.git"
+  },
+  "author": "Nick Mudge",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/aavegotchi/matic-atoken-predicate/issues"
+  },
+  "homepage": "https://github.com/aavegotchi/matic-atoken-predicate#readme",
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.1",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "chai": "^4.2.0",
+    "ethereum-waffle": "^3.2.1",
+    "ethers": "^5.0.25",
+    "hardhat": "^2.0.7"
+  }
+}

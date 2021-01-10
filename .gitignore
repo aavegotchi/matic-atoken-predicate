@@ -1,0 +1,9 @@
+node_modules
+.secret
+.secret2
+cache
+bin
+.env
+artifacts
+coverage.json
+coverage
