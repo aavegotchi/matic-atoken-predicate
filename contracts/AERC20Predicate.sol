@@ -5,10 +5,20 @@ pragma solidity 0.7.6;
 
 import {IERC20} from "./interfaces/IERC20.sol";
 import {LibERC20} from "./libraries/LibERC20.sol";
+import "./libraries/LibMath.sol";
 import {RLPReader} from "./libraries/RLPReader.sol";
 import {ITokenPredicate} from "./interfaces/ITokenPredicate.sol";
 
-struct AppStorage {
+interface ILendingPool {
+    function getReserveNormalizedIncome(address _asset) external view returns (uint256);
+}
+
+interface IAToken {
+    function POOL() external returns(ILendingPool);
+    function UNDERLYING_ASSET_ADDRESS() external returns(address);
+}
+
+struct AppStorage {    
     address manager; 
     bool init;
 }
@@ -38,6 +48,13 @@ contract ERC20Predicate is ITokenPredicate {
         s.manager = _manager;
     }
 
+
+    function getMATokenValue(address _aTokenAddress, uint256 _aTokenValue) external returns (uint256 maTokenValue_) {
+        ILendingPool pool = IAToken(_aTokenAddress).POOL();
+        uint256 liquidityIndex = pool.getReserveNormalizedIncome(IAToken(_aTokenAddress).UNDERLYING_ASSET_ADDRESS());
+        maTokenValue_ = LibMath.p27Div(_aTokenValue, liquidityIndex);        
+    }
+
     /**
      * @notice Lock ERC20 tokens for deposit, callable only by manager
      * @param depositor Address who wants to deposit tokens
@@ -55,9 +72,13 @@ contract ERC20Predicate is ITokenPredicate {
         override
         onlyManager()
     {
-        uint256 amount = abi.decode(depositData, (uint256));
-        emit LockedERC20(depositor, depositReceiver, rootToken, amount);
-        LibERC20.transferFrom(rootToken, depositor, address(this), amount);        
+        (uint256 maTokenValue, uint256 maxATokenValue) = abi.decode(depositData, (uint256, uint256));
+        ILendingPool pool = IAToken(rootToken).POOL();
+        uint256 liquidityIndex = pool.getReserveNormalizedIncome(IAToken(rootToken).UNDERLYING_ASSET_ADDRESS());
+        uint256 aTokenValue = LibMath.p27Mul(maTokenValue, liquidityIndex);
+        require(aTokenValue <= maxATokenValue, "Too much aToken slippage occurred on transfer to matic");                    
+        emit LockedERC20(depositor, depositReceiver, rootToken, aTokenValue);
+        LibERC20.transferFrom(rootToken, depositor, address(this), aTokenValue);        
     }
 
     /**
@@ -90,10 +111,14 @@ contract ERC20Predicate is ITokenPredicate {
             address(logTopicRLPList[2].toUint()) == address(0), // topic2 is to address
             "ERC20Predicate: INVALID_RECEIVER"
         );
+        uint256 maTokenAmount = logRLPList[2].toUint();
+        ILendingPool pool = IAToken(rootToken).POOL();
+        uint256 liquidityIndex = pool.getReserveNormalizedIncome(IAToken(rootToken).UNDERLYING_ASSET_ADDRESS());
+        uint256 aTokenAmount = LibMath.p27Mul(maTokenAmount, liquidityIndex);
         LibERC20.transfer(
             rootToken, 
             withdrawer,
-            logRLPList[2].toUint() // log data field)
+            aTokenAmount
         );
     }
 }
